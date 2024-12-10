@@ -1,0 +1,12 @@
+{
+    "sendkey": "",
+    "luboji": {
+        "url": "",
+        "username": "",
+        "password": "",
+        "roomId": 0
+    },
+    "diskUsage": {
+        "threshold": 0.8
+    }
+}
