@@ -83,7 +83,8 @@ if "__main__" == __name__:
             title = "开播通知"
             desc = f"**{upName}** 开播啦！\n\n游戏分区：{areaNameParent}-{areaNameChild}\n\n{recordingStr}"
             short = f"{upName} 开播啦！"
-            if shouter.send(title, desc, short):
+            tags = "开播信息"
+            if shouter.send(title, desc, short, tags):
                 logger.info("发送开播通知成功")
             else:
                 logger.error("发送开播通知失败")
@@ -110,7 +111,8 @@ if "__main__" == __name__:
                 desc += "| ---- | ---- | ---- |\n"
                 desc += "| {0:.2f} GB | {1:.2f} GB | {2:.2f} GB |\n\n".format(total, used, free)
                 short = notEnoughStr
-                if shouter.send(title, desc, short):
+                tags = "服务器报警"
+                if shouter.send(title, desc, short, tags):
                     logger.info("发送磁盘告警通知成功")
                 else:
                     logger.error("发送磁盘告警通知失败")
