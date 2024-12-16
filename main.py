@@ -97,12 +97,12 @@ if "__main__" == __name__:
             total, used, free = getDiskUsage()
             threadshold = duConf["threshold"]
             logger.info("磁盘空间：共 {:.3f} GB, 已使用 {:.3f} GB, 剩余 {:.3f} GB".format(total, used, free))
-            percentageUsed = used / total * 100
+            ratioUsed = used / total
 
-            if percentageUsed > threadshold:
+            if ratioUsed > threadshold:
                 logger.info("发送磁盘空间告警通知")
 
-                notEnoughStr = "磁盘空间已使用 {:.2f}% ，达到设定的阈值 {:.2f}%".format(percentageUsed, threadshold * 100)
+                notEnoughStr = "磁盘空间已使用 {:.2f}% ，达到设定的阈值 {:.2f}%".format(ratioUsed * 100, threadshold * 100)
 
                 title = "磁盘空间警告"
                 desc = "磁盘空间告急！\n\n"
