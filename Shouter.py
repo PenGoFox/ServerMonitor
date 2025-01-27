@@ -13,10 +13,15 @@ class Shouter:
             "short": short,
             "tags": tags
         }
-        response = sc_send(self._sendKey, toSend["title"], toSend["desc"], toSend)
-        if "code" in response and response['code'] == 0:
-            self._logger.debug(response)
-            return True
-        else:
-            self._logger.error(response)
+
+        try:
+            response = sc_send(self._sendKey, toSend["title"], toSend["desc"], toSend)
+            if "code" in response and response['code'] == 0:
+                self._logger.debug(response)
+                return True
+            else:
+                self._logger.error(response)
+                return False
+        except Exception as e:
+            self._logger.error(e)
             return False

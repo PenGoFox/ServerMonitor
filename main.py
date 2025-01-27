@@ -66,29 +66,41 @@ if "__main__" == __name__:
             logger.debug(f"sleep {intreval} seconds")
             time.sleep(intreval)
 
-        # 处理录播姬的信息
-        room = lu.getRoomMessage(luConf["roomId"])
-        streaming = room["streaming"]
-        if streaming and not lastLoopData["streaming"]:
-            logger.info("发送开播通知")
+        # 有时候会出现路由无法到达的问题，这里加一个重试机制
+        _lu_retry = 0 # 重试次数
+        for _retry in range(4): # 重试 4 次
+            try:
+                # 处理录播姬的信息
+                room = lu.getRoomMessage(luConf["roomId"])
+                streaming = room["streaming"]
+                if streaming and not lastLoopData["streaming"]:
+                    logger.info("发送开播通知")
 
-            upName = room["name"] # up 主名称
-            title = room["title"]
-            recording = room["recording"]
-            areaNameParent = room["areaNameParent"]
-            areaNameChild = room["areaNameChild"]
+                    upName = room["name"] # up 主名称
+                    title = room["title"]
+                    recording = room["recording"]
+                    areaNameParent = room["areaNameParent"]
+                    areaNameChild = room["areaNameChild"]
 
-            recordingStr = "已开始录制" if recording else "未开始录制"
+                    recordingStr = "已开始录制" if recording else "未开始录制"
 
-            title = "开播通知"
-            desc = f"**{upName}** 开播啦！\n\n游戏分区：{areaNameParent}-{areaNameChild}\n\n{recordingStr}"
-            short = f"{upName} 开播啦！"
-            tags = "开播信息"
-            if shouter.send(title, desc, short, tags):
-                logger.info("发送开播通知成功")
-            else:
-                logger.error("发送开播通知失败")
-        lastLoopData["streaming"] = streaming
+                    title = "开播通知"
+                    desc = f"**{upName}** 开播啦！\n\n游戏分区：{areaNameParent}-{areaNameChild}\n\n{recordingStr}"
+                    short = f"{upName} 开播啦！"
+                    tags = "开播信息"
+                    if shouter.send(title, desc, short, tags):
+                        logger.info("发送开播通知成功")
+                    else:
+                        logger.error("发送开播通知失败")
+                lastLoopData["streaming"] = streaming
+                _lu_retry = -1 # 直接成功或者重试成功时该值小于 0
+                break
+            except Exception as e:
+                logger.error(e)
+                _lu_retry += 1
+            time.sleep(10) # sleep for 10 seconds
+        if _lu_retry >= 0: # 直接成功或者重试成功时该值小于 0
+            logger.error("tried")
 
         # 检查硬盘空间使用情况
         timestamp = time.time()
