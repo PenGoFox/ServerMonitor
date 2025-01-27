@@ -25,7 +25,7 @@ def loadConfig(filename):
     return None
 
 if "__main__" == __name__:
-    logger = initAndGetLogger(loglevel=logging.DEBUG)
+    logger = initAndGetLogger()
 
     configfile = "config.json"
     logger.info(f"读取配置文件 \"{configfile}\"")
