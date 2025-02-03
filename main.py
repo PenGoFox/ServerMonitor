@@ -24,6 +24,34 @@ def loadConfig(filename):
 
     return None
 
+def sendDiskUsageWarning(total, used, free, threshold):
+    '''
+    发送磁盘使用空间告警信息
+
+    total       总空间
+    used        已使用空间
+    free        剩余空间
+    threshold 报警阈值，仅用作提供文本信息，不作判断
+    '''
+    ratioUsed = used / total
+
+    logger.info("发送磁盘空间告警通知")
+
+    notEnoughStr = "磁盘空间已使用 {:.2f}% ，达到设定的阈值 {:.2f}%".format(ratioUsed * 100, threshold * 100)
+
+    title = "磁盘空间警告"
+    desc = "磁盘空间告急！\n\n"
+    desc = notEnoughStr + "\n\n\n\n"
+    desc += "| 总空间 | 已使用 | 剩余空间 |\n"
+    desc += "| ---- | ---- | ---- |\n"
+    desc += "| {0:.2f} GB | {1:.2f} GB | {2:.2f} GB |\n\n".format(total, used, free)
+    short = notEnoughStr
+    tags = "服务器报警"
+    if shouter.send(title, desc, short, tags):
+        logger.info("发送磁盘告警通知成功")
+    else:
+        logger.error("发送磁盘告警通知失败")
+
 if "__main__" == __name__:
     logger = initAndGetLogger()
 
@@ -107,24 +135,9 @@ if "__main__" == __name__:
         if timestamp - lastLoopData["lastTimeCheckUsage"] > intrevalOfCheckDiskUsage:
             lastLoopData["lastTimeCheckUsage"] = timestamp
             total, used, free = getDiskUsage()
-            threadshold = duConf["threshold"]
+            threshold = duConf["threshold"]
             logger.info("磁盘空间：共 {:.3f} GB, 已使用 {:.3f} GB, 剩余 {:.3f} GB".format(total, used, free))
             ratioUsed = used / total
 
-            if ratioUsed > threadshold:
-                logger.info("发送磁盘空间告警通知")
-
-                notEnoughStr = "磁盘空间已使用 {:.2f}% ，达到设定的阈值 {:.2f}%".format(ratioUsed * 100, threadshold * 100)
-
-                title = "磁盘空间警告"
-                desc = "磁盘空间告急！\n\n"
-                desc = notEnoughStr + "\n\n\n\n"
-                desc += "| 总空间 | 已使用 | 剩余空间 |\n"
-                desc += "| ---- | ---- | ---- |\n"
-                desc += "| {0:.2f} GB | {1:.2f} GB | {2:.2f} GB |\n\n".format(total, used, free)
-                short = notEnoughStr
-                tags = "服务器报警"
-                if shouter.send(title, desc, short, tags):
-                    logger.info("发送磁盘告警通知成功")
-                else:
-                    logger.error("发送磁盘告警通知失败")
+            if ratioUsed > threshold:
+                sendDiskUsageWarning(total, used, free, threshold)
