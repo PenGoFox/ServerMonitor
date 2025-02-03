@@ -6,6 +6,59 @@ from Shouter import *
 from Logger import *
 import LuBoJi # 录播姬
 
+def parseTimeIntervalStr(s:str):
+    '''
+    把数字和时间字符串组合成的字符串解析成实际的秒数
+    只管转换，值也有可能小于 0
+
+    比如 0.5day 会解析为 43200 (0.5 * 86400 = 43200) 秒
+    而字符串 20 则直接解析为数字 20
+
+    解析失败时将抛出 ValueError 异常
+    '''
+
+    timeStrEndMatchPatterns = ["day", "hour", "minute", "second"]
+    coefficientList = [86400, 3600, 60, 1]
+    for idx, p in enumerate(timeStrEndMatchPatterns):
+        if s.endswith(p):
+            numStr = s[:-len(p)].strip() # 获取前面的数字字符串
+            if numStr == "":
+                return 0
+
+            num = 0
+            try:
+                num = float(numStr)
+            except ValueError:
+                raise ValueError(f"{s} 不是正确的时间间隔表示")
+
+            return num * coefficientList[idx]
+
+    try:
+        num = int(s)
+        return num
+    except ValueError:
+        raise ValueError(f"{s} 不是正确的时间间隔表示")
+
+def parseTimeInterval(val):
+    if not isinstance(val, (str, int)):
+        raise ValueError("时间输入值有误，只能是字符串或者数字")
+
+    ret = -1
+
+    if isinstance(val, int):
+        ret = val
+    else:
+        valStr = val.strip()
+        if valStr == "":
+            raise ValueError("时间间隔不能为空字符串")
+
+        ret = parseTimeIntervalStr(valStr)
+
+    if ret <= 0:
+        raise ValueError(f"\"{val}\" 的等效值有误，时间等效值不能小于等于 0")
+
+    return ret
+
 def getDiskUsage(path="/"):
     total, used, free = shutil.disk_usage(path)
 
@@ -67,13 +120,41 @@ if "__main__" == __name__:
     logger.info("初始化接口完成")
 
     duConf = config["diskUsage"]
+    thresholds = []
+    if "thresholds" in duConf:
+        for t in duConf["thresholds"]:
+            item = {
+                "threshold": t["threshold"],
+                "interval": parseTimeInterval(t["interval"])
+            }
+            thresholds.append(item)
+        thresholds.sort(key = lambda x : x["threshold"], reverse = True)
+    else:
+        threshold = 0.8
+        interval = 3600
+        if "threshold" in duConf:
+            threshold = duConf["threshold"]
+        if "interval" in duConf:
+            interval  = parseTimeInterval(duConf["interval"])
+        item = {
+            "threshold": threshold,
+            "interval": interval
+        }
+        thresholds.append(item)
+    if len(thresholds) == 0:
+        raise ValueError("阈值列表为空，请设置阈值列表或直接设置阈值")
+    for t in thresholds:
+        threshold = t["threshold"]
+        if threshold <= 0 or threshold >= 1:
+            raise ValueError(f"阈值 {threshold} 设置不合理，必须要大于 0 且小于 1")
 
     luConf = config["luboji"]
     lu = LuBoJi.LuBoJi(luConf["url"], luConf["username"], luConf["password"])
 
     lastLoopData = {
         "streaming": False,
-        "lastTimeCheckUsage": time.time()
+        "lastTimeCheckUsage": time.time(),
+        "lastTimeUsageThreshold": -1
     }
 
     intrevalOfCheckDiskUsage = 60 * 60 # 检查剩余空间的时间间隔
@@ -132,12 +213,28 @@ if "__main__" == __name__:
 
         # 检查硬盘空间使用情况
         timestamp = time.time()
-        if timestamp - lastLoopData["lastTimeCheckUsage"] > intrevalOfCheckDiskUsage:
-            lastLoopData["lastTimeCheckUsage"] = timestamp
-            total, used, free = getDiskUsage()
-            threshold = duConf["threshold"]
-            logger.info("磁盘空间：共 {:.3f} GB, 已使用 {:.3f} GB, 剩余 {:.3f} GB".format(total, used, free))
-            ratioUsed = used / total
+        total, used, free = getDiskUsage()
+        ratioUsed = used / total
 
-            if ratioUsed > threshold:
-                sendDiskUsageWarning(total, used, free, threshold)
+        def sendUsageMessage():
+            lastLoopData["lastTimeCheckUsage"] = timestamp
+            logger.info("磁盘空间：共 {:.3f} GB, 已使用 {:.3f} GB, 剩余 {:.3f} GB".format(total, used, free))
+            sendDiskUsageWarning(total, used, free, threshold)
+
+        threshold = -1
+        for t in thresholds: # 找出当前的阈值及其对应的时间间隔
+            if ratioUsed > t["threshold"]:
+                intrevalOfCheckDiskUsage = t["interval"]
+                threshold = t["threshold"]
+                break
+
+        if threshold > 0: # 打开阈值检测
+            if threshold > lastLoopData["lastTimeUsageThreshold"]: # 阈值增加了
+                # 立刻通知一遍
+                sendUsageMessage()
+            elif threshold < lastLoopData["lastTimeUsageThreshold"]: # 阈值减小了
+                pass
+            else: # 阈值没变
+                if timestamp - lastLoopData["lastTimeCheckUsage"] > intrevalOfCheckDiskUsage: # 判断是不是到时间了
+                    sendUsageMessage()
+        lastLoopData["lastTimeUsageThreshold"] = threshold

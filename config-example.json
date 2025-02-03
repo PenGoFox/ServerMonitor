@@ -1,12 +1,51 @@
+// 注意本文件是不能用注释的，正式使用时请删除所有注释
 {
-    "sendkey": "",
+    "sendkey": "", // Server 酱的 sendkey
+
+    // 录播姬的设置
     "luboji": {
-        "url": "",
-        "username": "",
-        "password": "",
-        "roomId": 0
+        "url": "",      // 录播姬网站的 url
+        "username": "", // 用户名，用于登录
+        "password": "", // 密码，用于登录
+        "roomId": 0     // 要检查的房间号
     },
+
+    // 磁盘使用空间预警的设置
     "diskUsage": {
-        "threshold": 0.8
+        /*
+            interval 的值：
+                可以是数字，此时单位为秒
+                可以是数字字符串，此时单位为秒
+                可以是数字+时间字符串，此时单位为时间字符串的单位，如 1day 就是 1 天的时间
+                    可选的时间字符串为：
+                        day    天
+                        hour   小时
+                        minute 分钟
+                        second 秒
+            interval 的值可以是小数，但是不能小于 0
+
+            threshold 的值请务必设置为大于 0 小于 1 的小数
+        */
+
+        "threshold": 0.8,    // 检测阈值，当已使用空间超过该阈值时将在每次时间间隔后发送预警信息
+                             // 只有在没有 thresholds 选项时被启用，若两者均无，则使用默认值 0.8
+        "interval": "1hour", // 检测时间间隔，当已使用空间超过 threshold 阈值时在每次时间间隔后发送预警信息
+                             // 只有在没有 thresholds 选项时被启用，若两者均无，则使用默认值 3600（即 1 小时）
+
+        /*
+            阈值列表，优先级比上面的 threshold 高，有此设置时将忽略上面的 threshold 和 interval 设置
+
+            当设置了阈值列表时，将从最高阈值开始往最低阈值遍历，若当前使用空间大于某一阈值设置，将启用该阈值对应的时间间隔，之后的阈值将不再遍历
+            比如下面设置中：若当前使用空间为 0.92，那么将使用 2minute 的时间间隔
+            阈值列表顺序不重要，程序会进行排序，但是请合理安排时间间隔，一般来说阈值越大时间间隔越小
+        */
+        "thresholds": [
+            { "threshold": 0.9, "interval": "3hour" },
+            { "threshold": 0.95, "interval": "1hour" },
+            { "threshold": 0.98, "interval": "2minute" },
+            { "threshold": 0.8, "interval": "1day" },
+            { "threshold": 0.85, "interval": "0.5day" },
+            { "threshold": 0.99, "interval": 30 }
+        ]
     }
 }
